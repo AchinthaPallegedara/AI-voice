@@ -1,0 +1,15 @@
+transformers>=4.50.0
+torch>=2.0.0
+torchaudio
+sounddevice
+soundfile
+numpy
+openai>=1.0.0
+python-dotenv
+scipy
+accelerate
+librosa
+fastapi
+uvicorn[standard]
+edge-tts
+python-multipart
