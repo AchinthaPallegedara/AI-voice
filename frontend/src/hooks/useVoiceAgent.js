@@ -1,9 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 
-const VAD_INTERVAL_MS  = 50;
-const SPEECH_THRESHOLD = 0.012;
-const SILENCE_FRAMES   = 30;  // 30 × 50ms = 1.5 s silence → send
-const MIN_SPEECH_FRAMES = 5;  //  5 × 50ms = 250ms minimum to count as speech
+const VAD_INTERVAL_MS   = 50;
+const SPEECH_THRESHOLD  = 0.008;  // lowered for easier detection
+const SILENCE_FRAMES    = 30;     // 30 × 50ms = 1.5 s silence → send
+const MIN_SPEECH_FRAMES = 5;      //  5 × 50ms = 250ms minimum to count as speech
 
 export function useVoiceAgent() {
   const [callState,  setCallState]  = useState('ready');
@@ -20,6 +20,11 @@ export function useVoiceAgent() {
   const chunksRef      = useRef([]);
   const timerRef       = useRef(null);
   const toastTimerRef  = useRef(null);
+  const ringCtxRef     = useRef(null);
+  const ringStopRef    = useRef(false);
+  const pingIntervalRef = useRef(null);
+  const sessionIdRef   = useRef(null);
+  const callIdRef      = useRef(null);
 
   // mutable refs — safe to read inside intervals/callbacks
   const mutedRef         = useRef(false);
@@ -32,8 +37,47 @@ export function useVoiceAgent() {
   const silenceFramesRef = useRef(0);
   const speechFramesRef  = useRef(0);
 
+  // streaming playback refs
+  const playCtxRef       = useRef(null);   // AudioContext for AI speech
+  const nextPlayTimeRef  = useRef(0);      // scheduled end of last chunk
+
   useEffect(() => { mutedRef.current    = muted;     }, [muted]);
   useEffect(() => { callStateRef.current = callState; }, [callState]);
+
+  // ── ringtone (Web Audio, no file needed) ──────────────────────────
+
+  const startRingtone = useCallback(() => {
+    ringStopRef.current = false;
+    const ctx = new AudioContext();
+    ringCtxRef.current = ctx;
+
+    const ring = () => {
+      if (ringStopRef.current) return;
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc1.frequency.value = 440;
+      osc2.frequency.value = 480;
+      osc1.connect(gain); osc2.connect(gain);
+      gain.connect(ctx.destination);
+      // fade in → hold → fade out
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.07, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.07, ctx.currentTime + 1.8);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 2.0);
+      osc1.start(ctx.currentTime); osc1.stop(ctx.currentTime + 2.0);
+      osc2.start(ctx.currentTime); osc2.stop(ctx.currentTime + 2.0);
+      // repeat every 4 s (2 s ring + 2 s silence)
+      setTimeout(() => ring(), 4000);
+    };
+    ring();
+  }, []);
+
+  const stopRingtone = useCallback(() => {
+    ringStopRef.current = true;
+    ringCtxRef.current?.close().catch(() => {});
+    ringCtxRef.current = null;
+  }, []);
 
   // ── helpers ────────────────────────────────────────────────────────
 
@@ -89,31 +133,72 @@ export function useVoiceAgent() {
     return btoa(bin);
   };
 
-  // ── audio playback ─────────────────────────────────────────────────
+  // ── streaming audio playback ───────────────────────────────────────
 
-  const playAudio = useCallback(async (b64) => {
-    aiSpeakingRef.current = true;
-    setCallState('speaking');
-    setStatusText('Speaking…');
+  const ensurePlayCtx = useCallback(() => {
+    if (!playCtxRef.current || playCtxRef.current.state === 'closed') {
+      playCtxRef.current = new AudioContext();
+      nextPlayTimeRef.current = 0;
+    }
+    return playCtxRef.current;
+  }, []);
+
+  const scheduleChunk = useCallback(async (b64) => {
+    const ctx = ensurePlayCtx();
+
+    // If this is the first chunk, mark AI as speaking now
+    if (!aiSpeakingRef.current) {
+      aiSpeakingRef.current = true;
+      setCallState('speaking');
+      setStatusText('Speaking…');
+    }
 
     const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-    const blob  = new Blob([bytes], { type: 'audio/wav' });
-    const url   = URL.createObjectURL(blob);
-    const audio = new Audio(url);
+    let audioBuffer;
+    try {
+      audioBuffer = await ctx.decodeAudioData(bytes.buffer);
+    } catch (e) {
+      console.error('chunk decode error', e);
+      return;
+    }
 
-    const resume = () => {
-      URL.revokeObjectURL(url);
+    const startAt = Math.max(ctx.currentTime + 0.01, nextPlayTimeRef.current);
+    nextPlayTimeRef.current = startAt + audioBuffer.duration;
+
+    const src = ctx.createBufferSource();
+    src.buffer = audioBuffer;
+    src.connect(ctx.destination);
+    src.start(startAt);
+  }, [ensurePlayCtx]);
+
+  const onAudioDone = useCallback(() => {
+    const ctx = playCtxRef.current;
+    if (!ctx) {
       aiSpeakingRef.current    = false;
       vadStateRef.current      = 'idle';
       silenceFramesRef.current = 0;
       speechFramesRef.current  = 0;
       setCallState('idle');
       setStatusText('Connected');
-    };
+      return;
+    }
+    // Wait until the last scheduled chunk finishes, then mark idle
+    const remaining = (nextPlayTimeRef.current - ctx.currentTime) * 1000;
+    setTimeout(() => {
+      aiSpeakingRef.current    = false;
+      vadStateRef.current      = 'idle';
+      silenceFramesRef.current = 0;
+      speechFramesRef.current  = 0;
+      setCallState('idle');
+      setStatusText('Connected');
+    }, Math.max(0, remaining) + 150);
+  }, []);
 
-    audio.onended = resume;
-    audio.onerror = resume;
-    try { await audio.play(); } catch { resume(); }
+  const stopPlayback = useCallback(() => {
+    playCtxRef.current?.close().catch(() => {});
+    playCtxRef.current  = null;
+    nextPlayTimeRef.current = 0;
+    aiSpeakingRef.current = false;
   }, []);
 
   // ── process recorded audio ─────────────────────────────────────────
@@ -212,31 +297,13 @@ export function useVoiceAgent() {
     }, VAD_INTERVAL_MS);
   }, [processAudio, stopVADRecording]);
 
-  // ── WS message handler ─────────────────────────────────────────────
-
-  const handleMessage = useCallback((msg) => {
-    switch (msg.type) {
-      case 'status':
-        if      (msg.status === 'transcribing') setStatusText('Transcribing…');
-        else if (msg.status === 'thinking')     setStatusText('Thinking…');
-        else if (msg.status === 'idle' && !aiSpeakingRef.current) {
-          setCallState('idle');
-          setStatusText('Connected');
-        }
-        break;
-      case 'transcription': addMessage('user', msg.text); break;
-      case 'reply':         addMessage('ai',   msg.text); break;
-      case 'audio':         playAudio(msg.data); break;
-      case 'error':
-        showToast(msg.text || 'Error');
-        if (!aiSpeakingRef.current) { setCallState('idle'); setStatusText('Connected'); }
-        break;
-    }
-  }, [addMessage, showToast, playAudio]);
-
   // ── call lifecycle ─────────────────────────────────────────────────
 
   const endCallCleanup = useCallback(() => {
+    stopRingtone();
+    stopPlayback();
+    clearInterval(pingIntervalRef.current);
+    pingIntervalRef.current = null;
     clearInterval(vadIntervalRef.current);
     vadIntervalRef.current = null;
     audioCtxRef.current?.close().catch(() => {});
@@ -261,26 +328,87 @@ export function useVoiceAgent() {
     setAudioLevel(0);
     setCallState('ready');
     setStatusText('Ready to call');
-  }, []);
+  }, [stopRingtone, stopPlayback]);
 
-  const startCall = useCallback(async () => {
-    setCallState('connecting');
-    setStatusText('Connecting…');
+  // ── WS message handler ─────────────────────────────────────────────
 
+  const handleMessage = useCallback((msg) => {
+    switch (msg.type) {
+      case 'status':
+        if      (msg.status === 'transcribing') setStatusText('Transcribing…');
+        else if (msg.status === 'thinking')     setStatusText('Thinking…');
+        else if (msg.status === 'idle' && !aiSpeakingRef.current) {
+          setCallState('idle');
+          setStatusText('Connected');
+        }
+        break;
+      case 'transcription':          addMessage('user', msg.text); break;
+      case 'reply':                  addMessage('ai',   msg.text); break;
+      case 'audio_chunk':            scheduleChunk(msg.data); break;
+      case 'audio_done':             onAudioDone(); break;
+      case 'ping_response':          break; // heartbeat ack — no-op
+      case 'call_disconnect_response': endCallCleanup(); break;
+      case 'error':
+        showToast(msg.text || 'Error');
+        if (!aiSpeakingRef.current) { setCallState('idle'); setStatusText('Connected'); }
+        break;
+    }
+  }, [addMessage, showToast, scheduleChunk, onAudioDone, endCallCleanup]);
+
+  const startCall = useCallback(async ({ character = 'Aria', timezone = '' } = {}) => {
+    // Request mic early so browser permission prompt doesn't delay the call
     let stream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     } catch {
       showToast('Microphone access denied');
-      setCallState('ready');
-      setStatusText('Ready to call');
       return;
     }
     streamRef.current = stream;
 
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws    = new WebSocket(`${proto}://${location.host}/ws`);
+    callStateRef.current = 'ringing'; // sync immediately — useEffect is too late for the loop below
+    setCallState('ringing');
+    setStatusText('Ringing…');
+    startRingtone();
+
+    // Poll /api/health until models are ready (max 3 min)
+    const MAX_POLLS = 60;
+    let ready = false;
+    for (let i = 0; i < MAX_POLLS; i++) {
+      // Cancelled mid-ring (user pressed cancel)
+      if (callStateRef.current !== 'ringing') return;
+      try {
+        const r = await fetch('/api/health');
+        const data = await r.json();
+        if (data.ready) { ready = true; break; }
+      } catch { /* server not up yet — keep ringing */ }
+      await new Promise(r => setTimeout(r, 3000));
+    }
+
+    stopRingtone();
+
+    if (!ready || callStateRef.current !== 'ringing') {
+      if (!ready) showToast('Server unavailable — try again');
+      stream.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+      setCallState('ready');
+      setStatusText('Ready to call');
+      return;
+    }
+
+    setCallState('connecting');
+    setStatusText('Connecting…');
+
+    const proto  = location.protocol === 'https:' ? 'wss' : 'ws';
+    const params = new URLSearchParams({
+      character,
+      usercontext: JSON.stringify({ timezone: timezone || Intl.DateTimeFormat().resolvedOptions().timeZone }),
+    });
+    const ws = new WebSocket(`${proto}://${location.host}/ws?${params}`);
     wsRef.current = ws;
+
+    sessionIdRef.current = crypto.randomUUID();
+    callIdRef.current    = Math.floor(Math.random() * 1e9);
 
     ws.onopen = () => {
       setCallState('idle');
@@ -288,14 +416,43 @@ export function useVoiceAgent() {
       setElapsed(0);
       timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
       startVAD(stream);
+
+      // heartbeat — keep connection alive on serverless (Modal drops idle WS)
+      pingIntervalRef.current = setInterval(() => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({
+            type:       'ping',
+            session_id: sessionIdRef.current,
+            call_id:    callIdRef.current,
+            request_id: crypto.randomUUID(),
+            content:    'ping',
+          }));
+        }
+      }, 750);
     };
 
     ws.onmessage = (e) => handleMessage(JSON.parse(e.data));
     ws.onclose   = ()  => { if (callStateRef.current !== 'ready') endCallCleanup(); };
     ws.onerror   = ()  => { showToast('Connection failed'); endCallCleanup(); };
-  }, [handleMessage, showToast, startVAD, endCallCleanup]);
+  }, [handleMessage, showToast, startVAD, endCallCleanup, startRingtone, stopRingtone]);
 
-  const endCall = useCallback(() => endCallCleanup(), [endCallCleanup]);
+  const endCall = useCallback(() => {
+    const ws = wsRef.current;
+    if (ws?.readyState === WebSocket.OPEN) {
+      // graceful hang-up — server will respond with call_disconnect_response → cleanup
+      ws.send(JSON.stringify({
+        type:       'call_disconnect',
+        session_id: sessionIdRef.current,
+        call_id:    callIdRef.current,
+        request_id: crypto.randomUUID(),
+        content:    { reason: 'user_request' },
+      }));
+      // fallback: if no response in 1.5 s, clean up anyway
+      setTimeout(() => { if (wsRef.current) endCallCleanup(); }, 1500);
+    } else {
+      endCallCleanup();
+    }
+  }, [endCallCleanup]);
 
   const toggleMute = useCallback(() => {
     setMuted(m => {

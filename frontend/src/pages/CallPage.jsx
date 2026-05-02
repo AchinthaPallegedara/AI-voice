@@ -85,10 +85,11 @@ export default function CallPage() {
     if (transcriptRef.current) transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
   }, [messages]);
 
-  const inCall = !['ready', 'connecting'].includes(callState);
+  const inCall = !['ready', 'connecting', 'ringing'].includes(callState);
 
   const avatarRingClass = [
     'avatar-ring',
+    callState === 'ringing'              ? 'ringing'     : '',
     inCall && callState === 'idle'       ? 'listening'   : '',
     callState === 'recording'            ? 'recording'   : '',
     callState === 'speaking'             ? 'speaking'    : '',
@@ -154,15 +155,27 @@ export default function CallPage() {
         </div>
       </main>
 
-      {!inCall ? (
+      {callState === 'ringing' && (
         <div className="prereq-section">
-          <button className="call-btn" onClick={startCall} disabled={callState === 'connecting'}>
+          <div className="ringing-info">Starting up — usually ready in 30–60 s</div>
+          <button className="cancel-btn" onClick={endCall}>Cancel</button>
+        </div>
+      )}
+
+      {callState === 'ready' && (
+        <div className="prereq-section">
+          <button className="call-btn" onClick={() => startCall({
+            character: settings.ai_name || 'Aria',
+            timezone:  Intl.DateTimeFormat().resolvedOptions().timeZone,
+          })}>
             <PhoneIcon />
-            {callState === 'connecting' ? 'Connecting…' : 'Start Call'}
+            Start Call
           </button>
           <span className="call-hint">Mic activates automatically when you speak</span>
         </div>
-      ) : (
+      )}
+
+      {inCall ? (
         <div className="controls">
           <button
             className={`ctrl-btn${muted ? ' muted' : ''}`}
@@ -176,7 +189,7 @@ export default function CallPage() {
             <EndIcon />
           </button>
         </div>
-      )}
+      ) : null}
 
       {toast && <div className="toast">{toast}</div>}
     </>
