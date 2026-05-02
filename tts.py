@@ -26,7 +26,7 @@ class TextToSpeech:
         self.processor = AutoProcessor.from_pretrained(CSM_MODEL_ID)
         self.model = CsmForConditionalGeneration.from_pretrained(
             CSM_MODEL_ID,
-            torch_dtype=torch.float16 if self.device != "cpu" else torch.float32,
+            torch_dtype=torch.bfloat16 if self.device == "cuda" else (torch.float16 if self.device == "mps" else torch.float32),
         ).to(self.device)
         self.model.eval()
         print("  TTS: ready.")
@@ -48,7 +48,7 @@ class TextToSpeech:
         audio_np = audio_tensors[0].cpu().numpy().astype(np.float32)
 
         buf = io.BytesIO()
-        sf.write(buf, audio_np, CSM_SAMPLE_RATE, format="WAV")
+        sf.write(buf, audio_np, CSM_SAMPLE_RATE, format="WAV", subtype="PCM_16")
         return buf.getvalue()
 
     async def synthesize_async(self, text: str, speaker_id: int = 0) -> bytes:

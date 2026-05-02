@@ -1,7 +1,7 @@
-transformers>=4.50.0
+transformers>=4.52.1
+huggingface_hub>=0.28.1
 torch>=2.0.0
 torchaudio
-sounddevice
 soundfile
 numpy
 openai>=1.0.0
@@ -11,5 +11,4 @@ accelerate
 librosa
 fastapi
 uvicorn[standard]
-edge-tts
 python-multipart

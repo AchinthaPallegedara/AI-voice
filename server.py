@@ -44,17 +44,14 @@ stt = SpeechToText()
 tts = TextToSpeech()   # loaded once at startup — CSM is too heavy to reload per call
 print("All models ready. Server starting...")
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+DIST = Path("frontend/dist")
+
+app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
 
 
 @app.get("/")
 async def index():
-    return FileResponse("static/index.html")
-
-
-@app.get("/settings-page")
-async def settings_page():
-    return FileResponse("static/settings.html")
+    return FileResponse(DIST / "index.html")
 
 
 @app.get("/api/settings")
@@ -75,6 +72,11 @@ async def preview_voice(request: Request):
     text = data.get("text", "Hello! How can I help you today?")
     audio = await tts.synthesize_async(text)
     return Response(content=audio, media_type="audio/wav")
+
+
+@app.get("/{full_path:path}")
+async def spa_fallback(full_path: str):
+    return FileResponse(DIST / "index.html")
 
 
 @app.websocket("/ws")

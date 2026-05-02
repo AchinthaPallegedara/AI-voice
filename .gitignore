@@ -1,8 +1,25 @@
+# env & secrets
 .env
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+.venv/
+venv/
+
+# Model / audio artefacts
 *.wav
 *.pt
 *.bin
+*.safetensors
+.cache/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# OS
 .DS_Store
+Thumbs.db

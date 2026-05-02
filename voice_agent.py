@@ -5,9 +5,11 @@ Pipeline:
   Microphone → Whisper STT → DeepSeek LLM → CSM TTS → Speaker
 """
 
+import io
 import sys
 import numpy as np
 import sounddevice as sd
+import soundfile as sf
 
 from config import (
     RECORDING_SAMPLE_RATE,
@@ -76,8 +78,9 @@ class VoiceAgent:
 
         return np.concatenate(chunks)
 
-    def play(self, audio: np.ndarray):
-        sd.play(audio, samplerate=CSM_SAMPLE_RATE)
+    def play(self, audio_bytes: bytes):
+        audio_np, _ = sf.read(io.BytesIO(audio_bytes), dtype="float32")
+        sd.play(audio_np, samplerate=CSM_SAMPLE_RATE)
         sd.wait()
 
     # ------------------------------------------------------------------
