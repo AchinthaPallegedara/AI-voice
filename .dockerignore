@@ -10,3 +10,16 @@ frontend/node_modules/
 frontend/dist/
 static/
 voice_agent.py
+
+# Python virtualenvs
+.venv/
+venv/
+
+# HuggingFace cache (mapped as Docker volume)
+.cache/
+
+# Go build artifacts
+go-server/voice-agent-server
+
+# Git
+.git/

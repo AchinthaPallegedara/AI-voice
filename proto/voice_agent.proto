@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package voice_agent;
+
+option go_package = "voice-agent/go-server/proto";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared messages
+// ─────────────────────────────────────────────────────────────────────────────
+
+// PCM16, 16kHz mono. Each chunk is 20–40ms (320–640 bytes).
+// Go sends chunks into a bounded channel (cap=8) before forwarding here
+// to apply natural backpressure and prevent flooding Python.
+message AudioChunk {
+  bytes data = 1;
+  bool  end_of_stream = 2;
+  string session_id = 3;
+}
+
+// Partial or final transcript from Whisper.
+// is_final=true only after transcript is stable for 300ms (stability window).
+message TranscriptChunk {
+  string text = 1;
+  bool   is_final = 2;
+  float  confidence = 3;
+  int64  timestamp_ms = 4;
+}
+
+// One turn of conversation history sent to CSM for voice conditioning.
+// role "0" = assistant, "1" = user — matches CSM speaker ID convention.
+// audio is PCM16 at 24kHz (CSM sample rate); omit for turns without recorded audio.
+message ConversationTurn {
+  string role  = 1;
+  string text  = 2;
+  bytes  audio = 3;
+}
+
+// Text token(s) destined for TTS synthesis.
+// context carries the last CONTEXT_TURNS (3) audio turns for CSM conditioning.
+message TextChunk {
+  string text = 1;
+  bool   end_of_stream = 2;
+  string session_id = 3;
+  repeated ConversationTurn context = 4;
+}
+
+// Pre-cached filler audio request (no inference — served from memory).
+message FillerRequest {
+  // One of: "Mm-hmm.", "Hmm...", "Let me think about that.",
+  //          "Sure!", "One moment.", "Right.", "Got it."
+  string key = 1;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STT Service
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Client streams 20–40ms PCM16 audio chunks.
+// Server streams partial transcripts (is_final=false) and one final committed
+// transcript (is_final=true) per utterance.
+service STTService {
+  rpc StreamTranscribe(stream AudioChunk) returns (stream TranscriptChunk);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TTS Service
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Client streams text tokens with conversation context.
+// Server streams PCM16 audio chunks (24kHz) as synthesis progresses.
+// Max 2 concurrent StreamSynthesize calls (semaphore in Python) — this is
+// intentional backpressure: the 3rd caller blocks until a slot is free,
+// which propagates back to the Go LLM consumer.
+//
+// GetFiller is unary and always returns immediately (cached bytes, no GPU).
+service TTSService {
+  rpc StreamSynthesize(stream TextChunk) returns (stream AudioChunk);
+  rpc GetFiller(FillerRequest) returns (AudioChunk);
+}

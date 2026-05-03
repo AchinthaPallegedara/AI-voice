@@ -1,0 +1,9 @@
+transformers>=4.52.1
+torch>=2.0.0
+torchaudio
+numpy
+soundfile
+scipy
+grpcio>=1.63.0
+grpcio-tools>=1.63.0
+protobuf>=5.27.0
