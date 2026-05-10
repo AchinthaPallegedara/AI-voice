@@ -1,20 +1,10 @@
 # env & secrets
 .env
+frontend/.env.local
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.venv/
-venv/
-
-# Model / audio artefacts
-*.wav
-*.pt
-*.bin
-*.safetensors
-.cache/
+# Go
+go-server/server
+go-server/*.exe
 
 # Node
 frontend/node_modules/
