@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type Repository interface {
@@ -25,15 +24,10 @@ func (r *postgresRepository) Get(ctx context.Context, db *gorm.DB) (*Settings, e
 }
 
 func (r *postgresRepository) Upsert(ctx context.Context, db *gorm.DB, s *Settings) error {
-	return db.WithContext(ctx).
-		Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "id"}},
-			DoUpdates: clause.AssignmentColumns([]string{
-				"ai_name", "system_prompt", "voice", "greeting",
-				"business_name", "business_description", "agent_goal",
-				"timezone", "language", "max_call_duration_secs", "data_collection_enabled",
-				"updated_at",
-			}),
-		}).
-		Create(s).Error
+	var existing Settings
+	if err := db.WithContext(ctx).First(&existing).Error; err == nil {
+		s.ID = existing.ID
+		s.CreatedAt = existing.CreatedAt
+	}
+	return db.WithContext(ctx).Save(s).Error
 }

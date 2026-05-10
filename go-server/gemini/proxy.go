@@ -55,7 +55,8 @@ type genCfg struct {
 	SpeechConfig       speechCfg `json:"speechConfig"`
 }
 type speechCfg struct {
-	VoiceConfig voiceCfg `json:"voiceConfig"`
+	VoiceConfig  voiceCfg `json:"voiceConfig"`
+	LanguageCode string   `json:"languageCode,omitempty"`
 }
 type voiceCfg struct {
 	PrebuiltVoiceConfig prebuiltVoice `json:"prebuiltVoiceConfig"`
@@ -147,7 +148,7 @@ type RecordHooks struct {
 
 // Proxy bridges one browser WebSocket to Gemini Live. Blocks until either
 // side disconnects.
-func Proxy(ctx context.Context, browser *websocket.Conn, apiKey, model, systemPrompt, voice, greeting string, tools []ToolDeclaration, dispatcher FunctionDispatcher, hooks *RecordHooks) {
+func Proxy(ctx context.Context, browser *websocket.Conn, apiKey, model, systemPrompt, voice, greeting, language string, tools []ToolDeclaration, dispatcher FunctionDispatcher, hooks *RecordHooks) {
 	if apiKey == "" {
 		writeJSON(browser, nil, map[string]string{"type": "error", "text": "GEMINI_API_KEY not configured on server"})
 		browser.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
@@ -181,12 +182,16 @@ func Proxy(ctx context.Context, browser *websocket.Conn, apiKey, model, systemPr
 
 	// ── send setup ────────────────────────────────────────────────────────
 	empty := struct{}{}
+	sc := speechCfg{
+		VoiceConfig:  voiceCfg{PrebuiltVoiceConfig: prebuiltVoice{VoiceName: voice}},
+		LanguageCode: bcp47(language),
+	}
 	setup := setupEnvelope{
 		Setup: setupCfg{
 			Model: model,
 			GenerationConfig: genCfg{
 				ResponseModalities: []string{"AUDIO"},
-				SpeechConfig:       speechCfg{VoiceConfig: voiceCfg{PrebuiltVoiceConfig: prebuiltVoice{VoiceName: voice}}},
+				SpeechConfig:       sc,
 			},
 			Tools: tools,
 		},
@@ -212,18 +217,20 @@ func Proxy(ctx context.Context, browser *websocket.Conn, apiKey, model, systemPr
 		}
 	}
 
-	// ── trigger greeting if configured ───────────────────────────────────
-	if strings.TrimSpace(greeting) != "" {
-		// signal start → send "Hello" text → signal end so Gemini generates audio
-		msgs := []any{
-			realtimeEnvelope{RealtimeInput: realtimeInput{ActivityStart: &empty}},
-			realtimeEnvelope{RealtimeInput: realtimeInput{Text: "Hello"}},
-			realtimeEnvelope{RealtimeInput: realtimeInput{ActivityEnd: &empty}},
-		}
-		for _, m := range msgs {
-			if err := gConn.WriteJSON(m); err != nil {
-				log.Printf("gemini: greeting send: %v", err)
-			}
+	// ── trigger greeting ─────────────────────────────────────────────────
+	// Send a system cue so Gemini opens with the configured greeting line.
+	greetingCue := strings.TrimSpace(greeting)
+	if greetingCue == "" {
+		greetingCue = "Hello"
+	}
+	greetingMsgs := []any{
+		realtimeEnvelope{RealtimeInput: realtimeInput{ActivityStart: &empty}},
+		realtimeEnvelope{RealtimeInput: realtimeInput{Text: "[call connected — open with your greeting now]"}},
+		realtimeEnvelope{RealtimeInput: realtimeInput{ActivityEnd: &empty}},
+	}
+	for _, m := range greetingMsgs {
+		if err := gConn.WriteJSON(m); err != nil {
+			log.Printf("gemini: greeting send: %v", err)
 		}
 	}
 
@@ -379,4 +386,26 @@ func writeJSON(conn *websocket.Conn, mu *sync.Mutex, v any) {
 		defer mu.Unlock()
 	}
 	conn.WriteJSON(v)
+}
+
+// bcp47 converts a short language code (e.g. "si") to a BCP-47 tag (e.g. "si-LK").
+func bcp47(code string) string {
+	m := map[string]string{
+		"en": "en-US",
+		"si": "si-LK",
+		"es": "es-ES",
+		"fr": "fr-FR",
+		"de": "de-DE",
+		"pt": "pt-PT",
+		"ja": "ja-JP",
+		"zh": "zh-CN",
+		"ar": "ar-SA",
+		"hi": "hi-IN",
+		"ko": "ko-KR",
+		"it": "it-IT",
+	}
+	if tag, ok := m[code]; ok {
+		return tag
+	}
+	return ""
 }

@@ -46,7 +46,6 @@ export function WaveformPlayer({ src }: { src: string }) {
 
         // Decode waveform — AudioContext is only used for decoding, suspend state is fine
         const ctx = new AudioContext();
-        // decodeAudioData detaches buf, so blob is created first above
         const decoded = await ctx.decodeAudioData(buf);
         ctx.close();
         if (cancelled) return;
@@ -164,10 +163,7 @@ export function WaveformPlayer({ src }: { src: string }) {
           <span style={{ color: "var(--color-muted)", fontSize: "0.8rem" }}>Audio unavailable</span>
         ) : !ready ? (
           Array.from({ length: BAR_COUNT }, (_, i) => (
-            <div
-              key={i}
-              style={{ flex: 1, height: 4, borderRadius: 2, background: "var(--color-surface-2)" }}
-            />
+            <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: "var(--color-surface-2)" }} />
           ))
         ) : (
           bars.map((amp, i) => (
@@ -177,10 +173,9 @@ export function WaveformPlayer({ src }: { src: string }) {
                 flex: 1,
                 height: Math.max(3, Math.round(amp * 48)),
                 borderRadius: 2,
-                background:
-                  i / BAR_COUNT <= progress
-                    ? "var(--color-accent-light)"
-                    : "rgba(136,136,170,0.3)",
+                background: i / BAR_COUNT <= progress
+                  ? "var(--color-accent-light)"
+                  : "rgba(136,136,170,0.3)",
                 transition: "background 0.04s",
               }}
             />

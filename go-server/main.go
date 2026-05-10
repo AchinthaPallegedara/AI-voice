@@ -51,7 +51,7 @@ func main() {
 	// Settings domain
 	settingsRepo := settings.NewRepository()
 	settingsSvc := settings.NewService(settingsRepo)
-	settingsHandler := settings.NewHandler(settingsSvc)
+	settingsHandler := settings.NewHandler(settingsSvc, cfg.GeminiAPIKey, cfg.GeminiModel)
 
 	// Knowledge domain
 	knowledgeSvc := knowledge.NewService(knowledge.NewRepository())

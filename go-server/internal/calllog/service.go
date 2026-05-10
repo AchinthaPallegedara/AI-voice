@@ -33,12 +33,12 @@ func (s *Service) FinishCall(
 	id uint,
 	tenantSlug string,
 	startedAt, endedAt time.Time,
-	userPCM, aiPCM []byte,
+	userPCM []byte,
+	aiChunks []TimedChunk,
 	transcript string,
 ) error {
 	cl, err := s.repo.FindByID(ctx, db, id)
 	if err != nil {
-		// Fall back to creating a new record if prelim was never persisted
 		cl = &CallLog{}
 	}
 	cl.StartedAt = startedAt
@@ -47,9 +47,9 @@ func (s *Service) FinishCall(
 	cl.Transcript = transcript
 	cl.Status = "completed"
 
-	if len(userPCM) > 0 || len(aiPCM) > 0 {
+	if len(userPCM) > 0 || len(aiChunks) > 0 {
 		p := filepath.Join(s.recordingsDir, tenantSlug, fmt.Sprintf("%d.wav", cl.ID))
-		if mixErr := MixAndWriteWAV(p, userPCM, aiPCM); mixErr == nil {
+		if mixErr := MixAndWriteWAV(p, userPCM, aiChunks); mixErr == nil {
 			cl.AudioPath = p
 		}
 	}
@@ -65,7 +65,8 @@ func (s *Service) SaveCall(
 	db *gorm.DB,
 	tenantSlug string,
 	startedAt, endedAt time.Time,
-	userPCM, aiPCM []byte,
+	userPCM []byte,
+	aiChunks []TimedChunk,
 	transcript string,
 ) error {
 	cl := &CallLog{
@@ -80,9 +81,9 @@ func (s *Service) SaveCall(
 		return fmt.Errorf("create call log: %w", err)
 	}
 
-	if len(userPCM) > 0 || len(aiPCM) > 0 {
+	if len(userPCM) > 0 || len(aiChunks) > 0 {
 		p := filepath.Join(s.recordingsDir, tenantSlug, fmt.Sprintf("%d.wav", cl.ID))
-		if err := MixAndWriteWAV(p, userPCM, aiPCM); err == nil {
+		if err := MixAndWriteWAV(p, userPCM, aiChunks); err == nil {
 			cl.AudioPath = p
 			_ = s.repo.Update(ctx, db, cl)
 		}

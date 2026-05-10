@@ -8,5 +8,5 @@ import (
 
 // CallConfigProvider is satisfied by *settings.Service without any import.
 type CallConfigProvider interface {
-	GetForCall(ctx context.Context, db *gorm.DB) (systemPrompt, voice, greeting string, err error)
+	GetForCall(ctx context.Context, db *gorm.DB) (systemPrompt, voice, greeting, language string, err error)
 }

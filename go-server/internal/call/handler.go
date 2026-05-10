@@ -58,7 +58,7 @@ func (h *Handler) Handle(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
 	tenantSlug, _ := c.MustGet("tenant_slug").(string)
 
-	systemPrompt, voice, greeting, err := h.cfg.GetForCall(c.Request.Context(), db)
+	systemPrompt, voice, greeting, language, err := h.cfg.GetForCall(c.Request.Context(), db)
 	if err != nil {
 		log.Printf("call: get settings: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load call settings"})
@@ -98,17 +98,27 @@ func (h *Handler) Handle(c *gin.Context) {
 		log.Printf("call: create prelim log: %v", createErr)
 	}
 
-	// Recording hooks
+	// Recording hooks — AI chunks carry ms offsets from call start so the WAV
+	// writer can place each turn at its correct position in the timeline.
 	var (
 		mu         sync.Mutex
 		userPCM    []byte
-		aiPCM      []byte
+		aiChunks   []calllog.TimedChunk
 		transcript strings.Builder
 	)
 	hooks := &gemini.RecordHooks{
-		OnUserAudio: func(pcm []byte) { mu.Lock(); userPCM = append(userPCM, pcm...); mu.Unlock() },
-		OnAIAudio:   func(pcm []byte) { mu.Lock(); aiPCM = append(aiPCM, pcm...); mu.Unlock() },
-		OnText:      func(text string) { mu.Lock(); transcript.WriteString(text); mu.Unlock() },
+		OnUserAudio: func(pcm []byte) {
+			mu.Lock()
+			userPCM = append(userPCM, pcm...)
+			mu.Unlock()
+		},
+		OnAIAudio: func(pcm []byte) {
+			offsetMs := time.Since(startedAt).Milliseconds()
+			mu.Lock()
+			aiChunks = append(aiChunks, calllog.TimedChunk{Data: pcm, OffsetMs: offsetMs})
+			mu.Unlock()
+		},
+		OnText: func(text string) { mu.Lock(); transcript.WriteString(text); mu.Unlock() },
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -116,17 +126,17 @@ func (h *Handler) Handle(c *gin.Context) {
 
 	dispatcher := newDispatcher(h.connectors, h.datacollect, prelimLog.ID, "voice", db)
 
-	gemini.Proxy(ctx, conn, h.apiKey, h.model, systemPrompt, voice, greeting, tools, dispatcher, hooks)
+	gemini.Proxy(ctx, conn, h.apiKey, h.model, systemPrompt, voice, greeting, language, tools, dispatcher, hooks)
 
 	// Finalize call log
 	endedAt := time.Now()
 	mu.Lock()
 	t := transcript.String()
 	uPCM := append([]byte(nil), userPCM...)
-	aPCM := append([]byte(nil), aiPCM...)
+	chunks := append([]calllog.TimedChunk(nil), aiChunks...)
 	mu.Unlock()
 
-	if err := h.calllog.FinishCall(c.Request.Context(), db, prelimLog.ID, tenantSlug, startedAt, endedAt, uPCM, aPCM, t); err != nil {
+	if err := h.calllog.FinishCall(c.Request.Context(), db, prelimLog.ID, tenantSlug, startedAt, endedAt, uPCM, chunks, t); err != nil {
 		log.Printf("call: finish call log: %v", err)
 	}
 }
