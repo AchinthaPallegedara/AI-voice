@@ -1,36 +1,34 @@
 import React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
 
-type Variant = "success" | "warning" | "error" | "info" | "neutral";
+const badgeVariants = cva(
+  "inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium tracking-wide",
+  {
+    variants: {
+      variant: {
+        success: "bg-success/12 text-success border border-success/20",
+        warning: "bg-warning/12 text-warning border border-warning/20",
+        error:   "bg-danger/12 text-danger border border-danger/20",
+        info:    "bg-accent/12 text-accent-light border border-accent/20",
+        neutral: "bg-white/6 text-muted border border-white/8",
+      },
+    },
+    defaultVariants: {
+      variant: "neutral",
+    },
+  }
+);
 
-interface BadgeProps {
-  variant?: Variant;
+interface BadgeProps extends VariantProps<typeof badgeVariants> {
   children: React.ReactNode;
+  className?: string;
   style?: React.CSSProperties;
 }
 
-const styles: Record<Variant, React.CSSProperties> = {
-  success: { background: "rgba(6,214,160,0.15)", color: "var(--color-success)" },
-  warning: { background: "rgba(255,190,0,0.15)", color: "#ffbe00" },
-  error:   { background: "rgba(239,35,60,0.15)", color: "var(--color-danger)" },
-  info:    { background: "rgba(124,92,191,0.2)", color: "var(--color-accent-light)" },
-  neutral: { background: "rgba(136,136,170,0.15)", color: "var(--color-muted)" },
-};
-
-export function Badge({ variant = "neutral", children, style }: BadgeProps) {
+export function Badge({ variant, children, className, style }: BadgeProps) {
   return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        padding: "2px 8px",
-        borderRadius: 20,
-        fontSize: "0.72rem",
-        fontWeight: 600,
-        letterSpacing: "0.02em",
-        ...styles[variant],
-        ...style,
-      }}
-    >
+    <span className={cn(badgeVariants({ variant }), className)} style={style}>
       {children}
     </span>
   );

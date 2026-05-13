@@ -1,46 +1,43 @@
 import React from "react";
+import { cn } from "@/lib/utils";
 
 interface CardProps {
   children: React.ReactNode;
+  className?: string;
   style?: React.CSSProperties;
 }
 
-export function Card({ children, style }: CardProps) {
+export function Card({ children, className, style }: CardProps) {
   return (
     <div
-      style={{
-        background: "var(--color-surface)",
-        border: "1px solid rgba(255,255,255,0.05)",
-        borderRadius: 16,
-        overflow: "hidden",
-        ...style,
-      }}
+      className={cn(
+        "bg-surface border border-white/10 rounded-xl overflow-hidden",
+        className
+      )}
+      style={style}
     >
       {children}
     </div>
   );
 }
 
-export function CardHeader({ children, style }: CardProps) {
+export function CardHeader({ children, className, style }: CardProps) {
   return (
     <div
-      style={{
-        padding: "16px 20px",
-        borderBottom: "1px solid rgba(255,255,255,0.05)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        ...style,
-      }}
+      className={cn(
+        "px-5 py-3.5 border-b border-white/8 flex items-center justify-between",
+        className
+      )}
+      style={style}
     >
       {children}
     </div>
   );
 }
 
-export function CardBody({ children, style }: CardProps) {
+export function CardBody({ children, className, style }: CardProps) {
   return (
-    <div style={{ padding: "20px", ...style }}>
+    <div className={cn("p-5", className)} style={style}>
       {children}
     </div>
   );

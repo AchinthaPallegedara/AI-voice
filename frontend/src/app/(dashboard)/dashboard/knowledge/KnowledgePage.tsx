@@ -119,39 +119,32 @@ export function KnowledgePage({
   const tabs = ["all", "faq", "doc", "product"];
 
   return (
-    <div style={{ padding: "28px 32px", maxWidth: 1100, margin: "0 auto" }}>
+    <div className="">
       <Toaster theme="dark" />
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 700, color: "var(--color-text)" }}>
-            Knowledge Base
-          </h1>
-          <p style={{ margin: "4px 0 0", color: "var(--color-muted)", fontSize: "0.875rem" }}>
-            Business knowledge injected into every agent conversation
-          </p>
+          <p className="text-xs font-medium text-muted uppercase tracking-widest mb-1">Knowledge</p>
+          <h1 className="text-2xl font-semibold text-text mb-1">Knowledge Base</h1>
+          <p className="text-sm text-muted">Business knowledge injected into every agent conversation</p>
         </div>
-        <Button onClick={openCreate}>+ Add Entry</Button>
+        <Button onClick={openCreate} icon={<span className="text-base leading-none">+</span>}>
+          Add Entry
+        </Button>
       </div>
 
       {/* Filter tabs */}
-      <div style={{ display: "flex", gap: 4, marginBottom: 20 }}>
+      <div className="flex gap-1.5 mb-5 bg-surface p-1 rounded-xl border border-white/5 w-fit">
         {tabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setFilter(tab)}
-            style={{
-              padding: "6px 16px",
-              borderRadius: 20,
-              border: "none",
-              fontSize: "0.8rem",
-              fontWeight: 500,
-              cursor: "pointer",
-              background: filter === tab ? "var(--color-accent)" : "var(--color-surface-2)",
-              color: filter === tab ? "#fff" : "var(--color-muted)",
-              textTransform: "capitalize",
-            }}
+            className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+              filter === tab
+                ? "bg-accent text-white shadow-sm"
+                : "text-muted hover:text-text hover:bg-white/5"
+            }`}
           >
             {tab === "all" ? "All" : tab.toUpperCase()}
           </button>
@@ -235,7 +228,7 @@ export function KnowledgePage({
             <select
               value={form.type}
               onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-              style={{ width: "100%", padding: "9px 12px", background: "var(--color-surface-2)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "var(--color-text)", fontSize: "0.875rem" }}
+              style={{ width: "100%", padding: "9px 12px", background: "var(--color-surface-2)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 8, color: "var(--color-text)", fontSize: "0.875rem" }}
             >
               <option value="faq">FAQ</option>
               <option value="doc">Document</option>

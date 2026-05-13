@@ -318,47 +318,29 @@ export function ConnectorsPage({
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ padding: "28px 32px", maxWidth: 1100, margin: "0 auto" }}>
+    <div className="">
       <Toaster theme="dark" />
 
       {/* Page header */}
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 700, color: "var(--color-text)" }}>
-          Connectors
-        </h1>
-        <p style={{ margin: "4px 0 0", color: "var(--color-muted)", fontSize: "0.875rem" }}>
+      <div className="mb-8">
+        <p className="text-xs font-medium text-muted uppercase tracking-widest mb-1">Integrations</p>
+        <h1 className="text-2xl font-semibold text-text mb-1">Connectors</h1>
+        <p className="text-sm text-muted">
           Connect messaging channels and external APIs to your voice agent
         </p>
       </div>
 
       {/* Tabs */}
-      <div
-        style={{
-          display: "flex",
-          gap: 4,
-          marginBottom: 24,
-          background: "var(--color-surface)",
-          padding: 4,
-          borderRadius: 10,
-          width: "fit-content",
-          border: "1px solid rgba(255,255,255,0.06)",
-        }}
-      >
+      <div className="flex gap-1 mb-6 bg-surface p-1 rounded-xl border border-white/5 w-fit">
         {(["channels", "api"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            style={{
-              padding: "7px 18px",
-              borderRadius: 7,
-              border: "none",
-              cursor: "pointer",
-              fontSize: "0.875rem",
-              fontWeight: 500,
-              transition: "all 0.15s",
-              background: activeTab === tab ? "var(--color-accent)" : "transparent",
-              color: activeTab === tab ? "#fff" : "var(--color-muted)",
-            }}
+            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+              activeTab === tab
+                ? "bg-accent text-white shadow-sm"
+                : "text-muted hover:text-text hover:bg-white/5"
+            }`}
           >
             {tab === "channels" ? "Channels" : "API Tools"}
           </button>
@@ -368,7 +350,7 @@ export function ConnectorsPage({
       {/* ── Channels tab ── */}
       {activeTab === "channels" && (
         <div>
-          <p style={{ margin: "0 0 20px", color: "var(--color-muted)", fontSize: "0.85rem" }}>
+          <p className="text-sm text-muted mb-5">
             Connect messaging channels so users can reach your voice agent from their preferred platform.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 16 }}>
@@ -446,7 +428,7 @@ export function ConnectorsPage({
                       style={{
                         padding: "10px 12px", borderRadius: 8, fontSize: "0.78rem",
                         color: "var(--color-muted)", lineHeight: 1.5,
-                        background: "rgba(124,92,191,0.08)",
+                        background: "rgba(47,129,247,0.08)",
                       }}
                     >
                       Add the <span style={{ color: "var(--color-accent-light)" }}>Webhook URL</span> and{" "}
@@ -515,11 +497,11 @@ export function ConnectorsPage({
       {/* ── API Tools tab ── */}
       {activeTab === "api" && (
         <div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-            <p style={{ margin: 0, color: "var(--color-muted)", fontSize: "0.85rem" }}>
+          <div className="flex items-center justify-between mb-5">
+            <p className="text-sm text-muted">
               External APIs the agent can call mid-conversation using function calling.
             </p>
-            <Button onClick={openCreate}>+ Add Connector</Button>
+            <Button onClick={openCreate} icon={<span className="text-base leading-none">+</span>}>Add Connector</Button>
           </div>
 
           {connectors.length === 0 ? (
@@ -597,7 +579,7 @@ export function ConnectorsPage({
               <select
                 value={form.method}
                 onChange={(e) => setForm((f) => ({ ...f, method: e.target.value }))}
-                style={{ padding: "9px 12px", background: "var(--color-surface-2)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "var(--color-text)", fontSize: "0.875rem" }}
+                style={{ padding: "9px 12px", background: "var(--color-surface-2)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 8, color: "var(--color-text)", fontSize: "0.875rem" }}
               >
                 <option>GET</option>
                 <option>POST</option>
@@ -644,7 +626,7 @@ export function ConnectorsPage({
               disabled={selectingSaving}
               style={{
                 display: "flex", alignItems: "center", gap: 14,
-                padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)",
+                padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.10)",
                 background: "var(--color-surface-2)", cursor: "pointer", textAlign: "left",
                 color: "var(--color-text)", transition: "border-color 0.15s",
               }}

@@ -70,7 +70,7 @@ export function VoiceCall({ apiKey }: { apiKey: string }) {
               position: "absolute",
               inset: -8,
               borderRadius: "50%",
-              background: active ? "rgba(239,35,60,0.15)" : "rgba(124,92,191,0.15)",
+              background: active ? "rgba(239,35,60,0.15)" : "rgba(47,129,247,0.15)",
               animation: "ping 1.2s cubic-bezier(0,0,0.2,1) infinite",
             }}
           />
@@ -88,7 +88,7 @@ export function VoiceCall({ apiKey }: { apiKey: string }) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: `0 8px 32px ${active ? "rgba(239,35,60,0.35)" : "rgba(124,92,191,0.35)"}`,
+            boxShadow: `0 8px 32px ${active ? "rgba(239,35,60,0.35)" : "rgba(47,129,247,0.35)"}`,
           }}
         >
           {active ? <EndIcon /> : <CallIcon />}

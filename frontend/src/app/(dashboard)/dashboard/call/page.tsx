@@ -6,22 +6,13 @@ export default async function CallPage() {
   if (!session) return null;
 
   return (
-    <div style={{ maxWidth: 600, margin: "0 auto" }}>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: 600, color: "var(--color-text)", margin: "0 0 4px" }}>
-        Voice Call
-      </h1>
-      <p style={{ color: "var(--color-muted)", fontSize: "0.875rem", marginTop: 0, marginBottom: "2rem" }}>
-        Talk live with your AI voice agent.
-      </p>
+    <div className="max-w-lg mx-auto">
+      <div className="mb-7">
+        <h1 className="text-xl font-semibold text-text mb-1">Voice Call</h1>
+        <p className="text-sm text-muted">Talk live with your AI voice agent.</p>
+      </div>
 
-      <div
-        style={{
-          background: "var(--color-surface)",
-          borderRadius: 20,
-          border: "1px solid rgba(255,255,255,0.05)",
-          padding: "2rem",
-        }}
-      >
+      <div className="bg-surface border border-white/10 rounded-xl p-8">
         <VoiceCall apiKey={session.apiKey} />
       </div>
     </div>

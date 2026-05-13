@@ -69,17 +69,14 @@ export function DataPage({
   }
 
   return (
-    <div style={{ padding: "28px 32px", maxWidth: 1100, margin: "0 auto" }}>
+    <div className="">
       <Toaster theme="dark" />
 
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 700, color: "var(--color-text)" }}>
-            Collected Data
-          </h1>
-          <p style={{ margin: "4px 0 0", color: "var(--color-muted)", fontSize: "0.875rem" }}>
-            Structured data captured from agent conversations
-          </p>
+          <p className="text-xs font-medium text-muted uppercase tracking-widest mb-1">Analytics</p>
+          <h1 className="text-2xl font-semibold text-text mb-1">Collected Data</h1>
+          <p className="text-sm text-muted">Structured data captured from agent conversations</p>
         </div>
         {activeTab === "data" && records.length > 0 && (
           <Button variant="secondary" onClick={exportCSV}>Export CSV</Button>
@@ -87,21 +84,16 @@ export function DataPage({
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 4, marginBottom: 24 }}>
+      <div className="flex gap-1 mb-6 bg-surface p-1 rounded-xl border border-white/5 w-fit">
         {(["data", "schema"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            style={{
-              padding: "7px 18px",
-              borderRadius: 20,
-              border: "none",
-              fontSize: "0.85rem",
-              fontWeight: 500,
-              cursor: "pointer",
-              background: activeTab === tab ? "var(--color-accent)" : "var(--color-surface-2)",
-              color: activeTab === tab ? "#fff" : "var(--color-muted)",
-            }}
+            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+              activeTab === tab
+                ? "bg-accent text-white shadow-sm"
+                : "text-muted hover:text-text hover:bg-white/5"
+            }`}
           >
             {tab === "data" ? "Collected Data" : "Schema Configuration"}
           </button>
@@ -202,7 +194,7 @@ export function DataPage({
                     <select
                       value={field.type}
                       onChange={(e) => updateField(i, { type: e.target.value })}
-                      style={{ padding: "9px 10px", background: "var(--color-surface-2)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "var(--color-text)", fontSize: "0.875rem" }}
+                      style={{ padding: "9px 10px", background: "var(--color-surface-2)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 8, color: "var(--color-text)", fontSize: "0.875rem" }}
                     >
                       {FIELD_TYPES.map((t) => <option key={t}>{t}</option>)}
                     </select>

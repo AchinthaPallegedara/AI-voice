@@ -7,9 +7,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!session) redirect("/login");
 
   return (
-    <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+    <div className="flex h-screen overflow-hidden bg-bg">
       <SidebarNav orgName={session.orgName} />
-      <main style={{ flex: 1, overflowY: "auto", padding: "2rem" }}>{children}</main>
+      <main className="flex-1 overflow-y-auto">
+        <div className="px-8 py-7 ">{children}</div>
+      </main>
     </div>
   );
 }

@@ -1,92 +1,61 @@
 "use client";
 
 import React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger";
-type Size = "sm" | "md" | "lg";
+const buttonVariants = cva(
+  "inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
+  {
+    variants: {
+      variant: {
+        primary:   "bg-accent text-white hover:bg-accent/90 shadow-sm shadow-accent/20",
+        secondary: "bg-surface-2 text-text border border-white/10 hover:bg-surface-3 hover:border-white/15",
+        ghost:     "text-muted hover:bg-white/6 hover:text-text",
+        danger:    "bg-danger/10 text-danger border border-danger/20 hover:bg-danger/18",
+        outline:   "border border-white/12 text-text hover:bg-white/5",
+      },
+      size: {
+        sm: "h-7 px-3 text-xs rounded-md",
+        md: "h-8 px-4",
+        lg: "h-10 px-5 text-sm rounded-xl",
+      },
+    },
+    defaultVariants: {
+      variant: "primary",
+      size: "md",
+    },
+  }
+);
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: Variant;
-  size?: Size;
+interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
   loading?: boolean;
   icon?: React.ReactNode;
 }
 
-const variantStyles: Record<Variant, React.CSSProperties> = {
-  primary: {
-    background: "var(--color-accent)",
-    color: "#fff",
-    border: "none",
-  },
-  secondary: {
-    background: "var(--color-surface-2)",
-    color: "var(--color-text)",
-    border: "1px solid rgba(255,255,255,0.08)",
-  },
-  ghost: {
-    background: "transparent",
-    color: "var(--color-muted)",
-    border: "none",
-  },
-  danger: {
-    background: "rgba(239,35,60,0.15)",
-    color: "var(--color-danger)",
-    border: "1px solid rgba(239,35,60,0.3)",
-  },
-};
-
-const sizeStyles: Record<Size, React.CSSProperties> = {
-  sm: { padding: "5px 12px", fontSize: "0.8rem", borderRadius: 6 },
-  md: { padding: "8px 16px", fontSize: "0.875rem", borderRadius: 8 },
-  lg: { padding: "11px 20px", fontSize: "0.95rem", borderRadius: 10 },
-};
-
 export function Button({
-  variant = "primary",
-  size = "md",
+  variant,
+  size,
   loading,
   icon,
   children,
   disabled,
+  className,
   style,
   ...props
 }: ButtonProps) {
   return (
     <button
       disabled={disabled || loading}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 7,
-        fontWeight: 500,
-        cursor: disabled || loading ? "not-allowed" : "pointer",
-        opacity: disabled || loading ? 0.6 : 1,
-        transition: "opacity 0.15s",
-        ...variantStyles[variant],
-        ...sizeStyles[size],
-        ...style,
-      }}
+      className={cn(buttonVariants({ variant, size }), className)}
+      style={style}
       {...props}
     >
-      {loading ? <Spinner /> : icon}
+      {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : icon}
       {children}
     </button>
-  );
-}
-
-function Spinner() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      style={{ animation: "spin 0.75s linear infinite" }}
-    >
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-    </svg>
   );
 }

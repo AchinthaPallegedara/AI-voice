@@ -1,71 +1,76 @@
 import { getSession } from "@/lib/session";
 import Link from "next/link";
+import { Phone, Settings, ArrowUpRight, Zap, BookOpen, Mic } from "lucide-react";
 
 export default async function DashboardPage() {
   const session = await getSession();
 
   return (
-    <div style={{ maxWidth: 640 }}>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: 600, color: "var(--color-text)", margin: "0 0 4px" }}>
-        Dashboard
-      </h1>
-      <p style={{ color: "var(--color-muted)", fontSize: "0.875rem", marginTop: 0, marginBottom: "2rem" }}>
-        Welcome back,{" "}
-        <span style={{ color: "var(--color-accent-light)" }}>{session?.orgName}</span>
-      </p>
+    <div className="">
+      {/* Page header */}
+      <div className="mb-7">
+        <h1 className="text-xl font-semibold text-text mb-1">Dashboard</h1>
+        <p className="text-sm text-muted">
+          Welcome back,{" "}
+          <span className="text-accent-light font-medium">{session?.orgName}</span>
+        </p>
+      </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
+      {/* Quick actions */}
+      <div className="grid grid-cols-2 gap-3 mb-5">
         <QuickCard
           href="/dashboard/call"
           title="Start a Call"
           description="Launch a live voice conversation with your AI agent."
-          iconBg="rgba(6,214,160,0.12)"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#06d6a0">
-              <path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1C10.61 21 3 13.39 3 4c0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.24 1.02l-2.21 2.2z" />
-            </svg>
-          }
+          iconBg="rgba(63,185,80,0.1)"
+          iconColor="#3fb950"
+          Icon={Phone}
         />
         <QuickCard
           href="/dashboard/settings"
           title="Configure Agent"
           description="Set your AI's name, voice, and behaviour."
-          iconBg="rgba(124,92,191,0.12)"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#9b7fe8">
-              <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
-            </svg>
-          }
+          iconBg="rgba(47,129,247,0.12)"
+          iconColor="#58a6ff"
+          Icon={Settings}
+        />
+        <QuickCard
+          href="/dashboard/knowledge"
+          title="Knowledge Base"
+          description="Add facts and FAQs the agent knows about your business."
+          iconBg="rgba(210,153,34,0.12)"
+          iconColor="#d29922"
+          Icon={BookOpen}
+        />
+        <QuickCard
+          href="/dashboard/recordings"
+          title="Recordings"
+          description="Review past calls with transcripts and audio playback."
+          iconBg="rgba(248,81,73,0.1)"
+          iconColor="#f85149"
+          Icon={Mic}
         />
       </div>
 
-      <div
-        style={{
-          background: "var(--color-surface)",
-          borderRadius: 16,
-          border: "1px solid rgba(255,255,255,0.05)",
-          padding: "1.5rem",
-        }}
-      >
-        <h2 style={{ color: "var(--color-text)", fontSize: "1rem", fontWeight: 500, marginTop: 0, marginBottom: "0.75rem" }}>
-          Getting started
-        </h2>
-        <ol style={{ color: "var(--color-muted)", fontSize: "0.875rem", paddingLeft: "1.25rem", margin: 0, lineHeight: 1.8 }}>
-          <li>
-            Go to{" "}
-            <Link href="/dashboard/settings" style={{ color: "var(--color-accent-light)" }}>
-              Settings
-            </Link>{" "}
-            to give your AI a name and personality.
-          </li>
-          <li>
-            Head to{" "}
-            <Link href="/dashboard/call" style={{ color: "var(--color-accent-light)" }}>
-              Voice Call
-            </Link>{" "}
-            and press the button to start talking.
-          </li>
-          <li>Allow microphone access when prompted by your browser.</li>
+      {/* Getting started */}
+      <div className="bg-surface border border-white/10 rounded-xl p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Zap className="w-3.5 h-3.5 text-accent-light" />
+          <h2 className="text-xs font-semibold text-text uppercase tracking-wider">Getting started</h2>
+        </div>
+        <ol className="space-y-3.5">
+          {[
+            <>Go to <Link href="/dashboard/settings" className="text-accent-light hover:underline">Settings</Link> to give your AI a name and personality.</>,
+            <>Head to <Link href="/dashboard/call" className="text-accent-light hover:underline">Voice Call</Link> and press the button to start talking.</>,
+            <>Allow microphone access when prompted by your browser.</>,
+          ].map((item, i) => (
+            <li key={i} className="flex gap-3 text-sm text-muted">
+              <span className="flex-shrink-0 w-5 h-5 rounded-md bg-surface-2 border border-white/10 text-xs flex items-center justify-center text-muted/70 font-medium mt-px">
+                {i + 1}
+              </span>
+              <span className="leading-relaxed">{item}</span>
+            </li>
+          ))}
         </ol>
       </div>
     </div>
@@ -76,43 +81,33 @@ function QuickCard({
   href,
   title,
   description,
-  icon,
+  Icon,
   iconBg,
+  iconColor,
 }: {
   href: string;
   title: string;
   description: string;
-  icon: React.ReactNode;
+  Icon: React.ElementType;
   iconBg: string;
+  iconColor: string;
 }) {
   return (
-    <Link href={href} style={{ textDecoration: "none" }}>
-      <div
-        style={{
-          background: "var(--color-surface)",
-          borderRadius: 16,
-          border: "1px solid rgba(255,255,255,0.05)",
-          padding: "1.25rem",
-          transition: "border-color 0.15s",
-          cursor: "pointer",
-        }}
-      >
+    <Link href={href} className="group block h-full">
+      <div className="h-full bg-surface border border-white/10 rounded-xl p-4 transition-all hover:border-white/18 hover:bg-surface-2">
         <div
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 10,
-            background: iconBg,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 12,
-          }}
+          className="w-8 h-8 rounded-lg flex items-center justify-center mb-3"
+          style={{ background: iconBg }}
         >
-          {icon}
+          <Icon className="w-4 h-4" style={{ color: iconColor }} />
         </div>
-        <p style={{ margin: "0 0 4px", fontWeight: 500, color: "var(--color-text)", fontSize: "0.9rem" }}>{title}</p>
-        <p style={{ margin: 0, color: "var(--color-muted)", fontSize: "0.8rem", lineHeight: 1.5 }}>{description}</p>
+        <div className="flex items-start justify-between gap-1">
+          <div>
+            <p className="font-medium text-text text-[13px] mb-0.5">{title}</p>
+            <p className="text-muted text-xs leading-relaxed">{description}</p>
+          </div>
+          <ArrowUpRight className="w-3.5 h-3.5 text-muted opacity-0 group-hover:opacity-50 transition-opacity flex-shrink-0 mt-0.5" />
+        </div>
       </div>
     </Link>
   );

@@ -1,6 +1,7 @@
 import { getSession } from "@/lib/session";
 import { apiFetch } from "@/lib/api";
 import Link from "next/link";
+import { Mic, PhoneCall, Clock, FileText, ChevronRight } from "lucide-react";
 
 interface CallLog {
   id: number;
@@ -39,89 +40,69 @@ export default async function RecordingsPage() {
   }
 
   return (
-    <div style={{ maxWidth: 720 }}>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: 600, color: "var(--color-text)", margin: "0 0 4px" }}>
-        Recordings
-      </h1>
-      <p style={{ color: "var(--color-muted)", fontSize: "0.875rem", marginTop: 0, marginBottom: "2rem" }}>
-        Every call is saved automatically — transcript and audio.
-      </p>
+    <div className="">
+      <div className="mb-7">
+        <h1 className="text-xl font-semibold text-text mb-1">Recordings</h1>
+        <p className="text-sm text-muted">
+          Every call is saved automatically — transcript and audio.
+        </p>
+      </div>
 
       {calls.length === 0 ? (
-        <div
-          style={{
-            background: "var(--color-surface)",
-            borderRadius: 16,
-            border: "1px solid rgba(255,255,255,0.05)",
-            padding: "3rem",
-            textAlign: "center",
-            color: "var(--color-muted)",
-            fontSize: "0.875rem",
-          }}
-        >
-          No recordings yet. Start a voice call to create your first one.
+        <div className="bg-surface border border-white/10 rounded-xl px-6 py-16 flex flex-col items-center text-center">
+          <div className="w-11 h-11 rounded-xl bg-surface-2 border border-white/10 flex items-center justify-center mb-4">
+            <Mic className="w-5 h-5 text-muted" />
+          </div>
+          <p className="text-sm font-medium text-text mb-1">No recordings yet</p>
+          <p className="text-xs text-muted mb-5">Start a voice call to create your first recording.</p>
+          <Link
+            href="/dashboard/call"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white text-xs font-medium hover:bg-accent/90 transition-colors shadow-sm"
+          >
+            <PhoneCall className="w-3.5 h-3.5" />
+            Start a call
+          </Link>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="flex flex-col gap-2">
           {calls.map((c) => (
             <Link
               key={c.id}
               href={`/dashboard/recordings/${c.id}`}
-              style={{ textDecoration: "none" }}
+              className="group flex items-center gap-3 bg-surface border border-white/10 rounded-xl px-4 py-3 hover:border-white/18 hover:bg-surface-2 transition-all"
             >
-              <div
-                style={{
-                  background: "var(--color-surface)",
-                  borderRadius: 12,
-                  border: "1px solid rgba(255,255,255,0.05)",
-                  padding: "1rem 1.25rem",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  transition: "border-color 0.15s",
-                  cursor: "pointer",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                  <div
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 8,
-                      background: "rgba(124,92,191,0.15)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#9b7fe8">
-                      <path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1C10.61 21 3 13.39 3 4c0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.24 1.02l-2.21 2.2z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p style={{ margin: 0, fontWeight: 500, color: "var(--color-text)", fontSize: "0.875rem" }}>
-                      {formatDate(c.started_at)}
-                    </p>
-                    <p style={{ margin: 0, color: "var(--color-muted)", fontSize: "0.75rem" }}>
-                      {formatDuration(c.duration_secs)}
-                      {c.transcript ? " · has transcript" : ""}
-                    </p>
-                  </div>
-                </div>
+              <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                <PhoneCall className="w-3.5 h-3.5 text-accent-light" />
+              </div>
 
-                <div style={{ display: "flex", gap: 6 }}>
-                  {c.user_audio_path && (
-                    <span style={{ fontSize: "0.7rem", padding: "2px 8px", borderRadius: 99, background: "rgba(6,214,160,0.12)", color: "#06d6a0" }}>
-                      audio
-                    </span>
-                  )}
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium text-text mb-0.5">{formatDate(c.started_at)}</p>
+                <div className="flex items-center gap-3 text-xs text-muted">
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {formatDuration(c.duration_secs)}
+                  </span>
                   {c.transcript && (
-                    <span style={{ fontSize: "0.7rem", padding: "2px 8px", borderRadius: 99, background: "rgba(155,127,232,0.12)", color: "#9b7fe8" }}>
+                    <span className="flex items-center gap-1">
+                      <FileText className="w-3 h-3" />
                       transcript
                     </span>
                   )}
                 </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {c.user_audio_path && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-success/10 text-success border border-success/15 font-medium">
+                    audio
+                  </span>
+                )}
+                {c.transcript && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent-light border border-accent/15 font-medium">
+                    transcript
+                  </span>
+                )}
+                <ChevronRight className="w-4 h-4 text-muted/30 group-hover:text-muted/70 transition-colors" />
               </div>
             </Link>
           ))}
