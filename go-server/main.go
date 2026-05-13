@@ -20,6 +20,7 @@ import (
 	"voiceagent/internal/settings"
 	"voiceagent/internal/tenant"
 	"voiceagent/internal/user"
+	"voiceagent/internal/telegram"
 	"voiceagent/internal/whatsapp"
 )
 
@@ -79,6 +80,10 @@ func main() {
 	whatsappSvc := whatsapp.NewService(whatsapp.NewRepository())
 	whatsappHandler := whatsapp.NewHandler(whatsappSvc, tenantSvc, mgr, cfg.MetaAppID, cfg.MetaAppSecret)
 
+	// Telegram channel domain
+	telegramSvc := telegram.NewService(telegram.NewRepository())
+	telegramHandler := telegram.NewHandler(telegramSvc, tenantSvc, mgr)
+
 	// Call domain (now wired with all services)
 	callHandler := call.NewHandler(settingsSvc, knowledgeSvc, connectorSvc, datacollectSvc, callLogSvc, cfg.GeminiAPIKey, cfg.GeminiModel)
 
@@ -112,10 +117,12 @@ func main() {
 	connector.RegisterRoutes(secured.Group("/api"), connectorHandler)
 	datacollect.RegisterRoutes(secured.Group("/api"), datacollectHandler)
 	whatsapp.RegisterRoutes(secured.Group("/api"), whatsappHandler)
+	telegram.RegisterRoutes(secured.Group("/api"), telegramHandler)
 
 	// Public webhook routes
 	webhooks := r.Group("/webhook")
 	whatsapp.RegisterWebhookRoutes(webhooks, whatsappHandler)
+	telegram.RegisterWebhookRoutes(webhooks, telegramHandler)
 
 	log.Printf("listening on %s", cfg.HTTPAddr)
 	if err := r.Run(cfg.HTTPAddr); err != nil {

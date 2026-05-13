@@ -8,7 +8,7 @@ import { Modal } from "@/components/ui/modal";
 import { Input, Textarea } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api";
 import { toast, Toaster } from "sonner";
-import type { APIConnector, WhatsAppChannel } from "./page";
+import type { APIConnector, WhatsAppChannel, TelegramChannel } from "./page";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
@@ -76,13 +76,23 @@ function EyeOffIcon() {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+function TelegramIcon({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+    </svg>
+  );
+}
+
 export function ConnectorsPage({
   initialConnectors,
   initialWhatsAppChannel,
+  initialTelegramChannel,
   apiKey,
 }: {
   initialConnectors: APIConnector[];
   initialWhatsAppChannel: WhatsAppChannel | null;
+  initialTelegramChannel: TelegramChannel | null;
   apiKey: string;
 }) {
   const [activeTab, setActiveTab] = useState<"channels" | "api">("channels");
@@ -108,6 +118,13 @@ export function ConnectorsPage({
   const [pendingPhones, setPendingPhones] = useState<PhoneInfo[]>([]);
   const [pendingToken, setPendingToken] = useState("");
   const [selectingSaving, setSelectingSaving] = useState(false);
+
+  // ── Telegram state ──
+  const [tgChannel, setTgChannel] = useState<TelegramChannel | null>(initialTelegramChannel);
+  const [tgModal, setTgModal] = useState(false);
+  const [tgToken, setTgToken] = useState("");
+  const [tgSaving, setTgSaving] = useState(false);
+  const [tgDisconnecting, setTgDisconnecting] = useState(false);
 
   // ─── API connector handlers ────────────────────────────────────────────────
 
@@ -315,6 +332,46 @@ export function ConnectorsPage({
 
   const webhookUrl = `${API_URL}/webhook/whatsapp/${apiKey}`;
 
+  // ─── Telegram handlers ────────────────────────────────────────────────────
+
+  async function handleConnectTelegram() {
+    if (!tgToken.trim()) {
+      toast.error("Please enter your bot token");
+      return;
+    }
+    setTgSaving(true);
+    try {
+      const ch = await apiFetch<TelegramChannel>("/api/telegram-channel/setup", apiKey, {
+        method: "POST",
+        body: JSON.stringify({ bot_token: tgToken.trim(), webhook_base_url: API_URL }),
+      });
+      setTgChannel(ch);
+      setTgModal(false);
+      setTgToken("");
+      toast.success(`Connected @${ch.bot_username}`);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to connect");
+    } finally {
+      setTgSaving(false);
+    }
+  }
+
+  async function handleTgDisconnect() {
+    if (!confirm("Disconnect this Telegram bot? The webhook will be removed from Telegram.")) return;
+    setTgDisconnecting(true);
+    try {
+      await apiFetch("/api/telegram-channel", apiKey, { method: "DELETE" });
+      setTgChannel(null);
+      toast.success("Disconnected");
+    } catch {
+      toast.error("Failed to disconnect");
+    } finally {
+      setTgDisconnecting(false);
+    }
+  }
+
+  const tgWebhookUrl = `${API_URL}/webhook/telegram/${apiKey}`;
+
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -469,17 +526,79 @@ export function ConnectorsPage({
               </CardBody>
             </Card>
 
-            {/* Coming-soon placeholders */}
-            <ComingSoonCard
-              name="Telegram"
-              color="rgba(36,161,222,0.15)"
-              iconColor="#24a1de"
-              icon={
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
-                </svg>
-              }
-            />
+            {/* Telegram card */}
+            <Card>
+              <CardHeader>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div
+                    style={{
+                      width: 40, height: 40, borderRadius: 10,
+                      background: "rgba(36,161,222,0.15)", color: "#24a1de",
+                      display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                    }}
+                  >
+                    <TelegramIcon size={22} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, color: "var(--color-text)", fontSize: "0.95rem" }}>
+                      Telegram
+                    </div>
+                    <div style={{ fontSize: "0.75rem", color: "var(--color-muted)", marginTop: 2 }}>
+                      Bot API · Webhook
+                    </div>
+                  </div>
+                  <Badge variant={tgChannel ? "success" : "neutral"}>
+                    {tgChannel ? "Connected" : "Not connected"}
+                  </Badge>
+                </div>
+              </CardHeader>
+
+              <CardBody>
+                {tgChannel ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <InfoRow label="Bot" value={`@${tgChannel.bot_username}`} />
+                    <CopyField
+                      label="Webhook URL"
+                      value={tgWebhookUrl}
+                      onCopy={() => copyText(tgWebhookUrl, "Webhook URL")}
+                    />
+                    <div
+                      style={{
+                        padding: "10px 12px", borderRadius: 8, fontSize: "0.78rem",
+                        color: "var(--color-muted)", lineHeight: 1.5,
+                        background: "rgba(47,129,247,0.08)",
+                      }}
+                    >
+                      The webhook is registered automatically. Your bot will reply to incoming
+                      voice and text messages via your voice agent.
+                    </div>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      style={{ flex: 1 }}
+                      onClick={handleTgDisconnect}
+                      loading={tgDisconnecting}
+                    >
+                      Disconnect
+                    </Button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    <p style={{ margin: 0, color: "var(--color-muted)", fontSize: "0.85rem", lineHeight: 1.6 }}>
+                      Create a bot via <span style={{ color: "var(--color-text)" }}>@BotFather</span>, paste
+                      the token below, and we&apos;ll register the webhook automatically.
+                    </p>
+                    <Button
+                      onClick={() => setTgModal(true)}
+                      style={{ width: "100%", justifyContent: "center", gap: 10 }}
+                      icon={<TelegramIcon size={16} />}
+                    >
+                      Connect Telegram Bot
+                    </Button>
+                  </div>
+                )}
+              </CardBody>
+            </Card>
             <ComingSoonCard
               name="SMS / Twilio"
               color="rgba(255,90,0,0.15)"
@@ -605,6 +724,48 @@ export function ConnectorsPage({
               )}
             </div>
           )}
+        </div>
+      </Modal>
+
+      {/* ── Telegram setup modal ── */}
+      <Modal
+        open={tgModal}
+        onOpenChange={(open) => { setTgModal(open); if (!open) setTgToken(""); }}
+        title="Connect Telegram Bot"
+        width={480}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => { setTgModal(false); setTgToken(""); }}>Cancel</Button>
+            <Button onClick={handleConnectTelegram} loading={tgSaving}>Connect</Button>
+          </>
+        }
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--color-muted)", lineHeight: 1.6 }}>
+            Open <span style={{ color: "var(--color-text)" }}>@BotFather</span> on Telegram,
+            send <span style={{ color: "var(--color-accent-light)", fontFamily: "monospace" }}>/newbot</span>,
+            and paste the token it gives you below.
+          </p>
+          <Input
+            label="Bot Token"
+            placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+            value={tgToken}
+            onChange={(e) => setTgToken(e.target.value)}
+          />
+          <div
+            style={{
+              padding: "10px 12px", borderRadius: 8, fontSize: "0.78rem",
+              color: "var(--color-muted)", lineHeight: 1.5,
+              background: "rgba(47,129,247,0.08)",
+            }}
+          >
+            The webhook URL registered on Telegram will be{" "}
+            <span style={{ color: "var(--color-accent-light)", fontFamily: "monospace", fontSize: "0.72rem" }}>
+              {tgWebhookUrl}
+            </span>
+            . Make sure your server is publicly reachable at{" "}
+            <span style={{ color: "var(--color-text)" }}>{API_URL}</span>.
+          </div>
         </div>
       </Modal>
 
