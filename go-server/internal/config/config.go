@@ -15,21 +15,35 @@ type Config struct {
 	HTTPAddr          string
 	CORSOrigin        string
 	RecordingsDir     string
+	R2Endpoint        string
+	R2AccessKeyID     string
+	R2SecretAccessKey string
+	R2Bucket          string
+	R2Region          string
+	MetaAppID         string
+	MetaAppSecret     string
 }
 
 func Load() (*Config, error) {
 	_ = godotenv.Load("../.env", ".env")
 
 	cfg := &Config{
-		GeminiModel:   os.Getenv("GEMINI_MODEL"),
-		HTTPAddr:      getEnv("HTTP_ADDR", ":8080"),
-		CORSOrigin:    getEnv("CORS_ORIGIN", "http://localhost:3000"),
-		RecordingsDir: getEnv("RECORDINGS_DIR", "./recordings"),
+		GeminiModel:       os.Getenv("GEMINI_MODEL"),
+		HTTPAddr:          getEnv("HTTP_ADDR", ":8080"),
+		CORSOrigin:        getEnv("CORS_ORIGIN", "http://localhost:3000"),
+		RecordingsDir:     getEnv("RECORDINGS_DIR", "./recordings"),
+		R2Endpoint:        os.Getenv("R2_ENDPOINT"),
+		R2AccessKeyID:     os.Getenv("R2_ACCESS_KEY_ID"),
+		R2SecretAccessKey: os.Getenv("R2_SECRET_ACCESS_KEY"),
+		R2Bucket:          os.Getenv("R2_BUCKET"),
+		R2Region:          getEnv("R2_REGION", "auto"),
 	}
 
 	cfg.ControlPlaneDBURL = os.Getenv("CONTROL_PLANE_DATABASE_URL")
 	cfg.PostgresBaseDSN = os.Getenv("POSTGRES_BASE_DSN")
 	cfg.GeminiAPIKey = os.Getenv("GEMINI_API_KEY")
+	cfg.MetaAppID = os.Getenv("META_APP_ID")
+	cfg.MetaAppSecret = os.Getenv("META_APP_SECRET")
 
 	if cfg.ControlPlaneDBURL == "" {
 		return nil, errors.New("CONTROL_PLANE_DATABASE_URL is required")

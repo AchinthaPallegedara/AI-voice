@@ -3,6 +3,7 @@ package calllog
 import (
 	"context"
 	"fmt"
+	"log"
 	"path/filepath"
 	"time"
 
@@ -12,10 +13,11 @@ import (
 type Service struct {
 	repo          Repository
 	recordingsDir string
+	audioStore    AudioStore
 }
 
-func NewService(repo Repository, recordingsDir string) *Service {
-	return &Service{repo: repo, recordingsDir: recordingsDir}
+func NewService(repo Repository, recordingsDir string, audioStore AudioStore) *Service {
+	return &Service{repo: repo, recordingsDir: recordingsDir, audioStore: audioStore}
 }
 
 // CreatePrelim inserts an in-progress call log so the dispatcher has a valid ID.
@@ -48,9 +50,10 @@ func (s *Service) FinishCall(
 	cl.Status = "completed"
 
 	if len(userPCM) > 0 || len(aiChunks) > 0 {
-		p := filepath.Join(s.recordingsDir, tenantSlug, fmt.Sprintf("%d.wav", cl.ID))
-		if mixErr := MixAndWriteWAV(p, userPCM, aiChunks); mixErr == nil {
-			cl.AudioPath = p
+		if audioPath, audioErr := s.persistAudio(ctx, tenantSlug, cl.ID, userPCM, aiChunks); audioErr == nil && audioPath != "" {
+			cl.AudioPath = audioPath
+		} else if audioErr != nil {
+			log.Printf("calllog: persist audio: %v", audioErr)
 		}
 	}
 
@@ -82,10 +85,11 @@ func (s *Service) SaveCall(
 	}
 
 	if len(userPCM) > 0 || len(aiChunks) > 0 {
-		p := filepath.Join(s.recordingsDir, tenantSlug, fmt.Sprintf("%d.wav", cl.ID))
-		if err := MixAndWriteWAV(p, userPCM, aiChunks); err == nil {
-			cl.AudioPath = p
+		if audioPath, audioErr := s.persistAudio(ctx, tenantSlug, cl.ID, userPCM, aiChunks); audioErr == nil && audioPath != "" {
+			cl.AudioPath = audioPath
 			_ = s.repo.Update(ctx, db, cl)
+		} else if audioErr != nil {
+			log.Printf("calllog: persist audio: %v", audioErr)
 		}
 	}
 	return nil
@@ -97,4 +101,26 @@ func (s *Service) ListCalls(ctx context.Context, db *gorm.DB) ([]*CallLog, error
 
 func (s *Service) GetCall(ctx context.Context, db *gorm.DB, id uint) (*CallLog, error) {
 	return s.repo.FindByID(ctx, db, id)
+}
+
+func (s *Service) persistAudio(ctx context.Context, tenantSlug string, callID uint, userPCM []byte, aiChunks []TimedChunk) (string, error) {
+	wav, err := MixWAV(userPCM, aiChunks)
+	if err != nil {
+		return "", err
+	}
+
+	key := filepath.ToSlash(filepath.Join(tenantSlug, fmt.Sprintf("%d.wav", callID)))
+	if s.audioStore != nil {
+		if err := s.audioStore.Upload(ctx, key, "audio/wav", wav); err == nil {
+			return r2AudioPath(key), nil
+		} else {
+			log.Printf("calllog: upload audio to r2: %v", err)
+		}
+	}
+
+	path := filepath.Join(s.recordingsDir, tenantSlug, fmt.Sprintf("%d.wav", callID))
+	if err := writeWAVFile(path, wav); err != nil {
+		return "", err
+	}
+	return path, nil
 }

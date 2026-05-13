@@ -1,6 +1,7 @@
 package calllog
 
 import (
+	"bytes"
 	"encoding/binary"
 	"os"
 	"path/filepath"
@@ -23,20 +24,28 @@ const micSampleRate = 16000
 // correct timestamp offset so turns play in the right order instead of all
 // stacking at t=0.
 func MixAndWriteWAV(path string, userPCM []byte, aiChunks []TimedChunk) error {
+	wav, err := MixWAV(userPCM, aiChunks)
+	if err != nil {
+		return err
+	}
+	return writeWAVFile(path, wav)
+}
+
+// MixWAV writes the call mix into a WAV byte slice.
+func MixWAV(userPCM []byte, aiChunks []TimedChunk) ([]byte, error) {
 	// Upsample user mic audio from 16 kHz → 24 kHz (no quality loss).
 	userUp := resample(userPCM, micSampleRate, recordSampleRate)
 	userSamples := len(userUp) / 2
 
 	// Build the AI track.
 	//
-	// Strategy: use the arrival timestamp only to find where each *turn* starts.
 	// Chunks within the same turn are written contiguously so that normal network
 	// jitter between consecutive chunks never creates gaps or overlaps (which
 	// cause audible pops/glitches). A gap of >400 ms between consecutive chunk
 	// arrivals is treated as a new turn, and the cursor jumps to the timestamp.
 	const newTurnThresholdMs = 400
 	aiTrackSamples := userSamples
-	cursor := 0            // write position in the AI track (samples)
+	cursor := 0 // write position in the AI track (samples)
 	lastArrivalMs := int64(0)
 
 	type placed struct {
@@ -115,7 +124,7 @@ func MixAndWriteWAV(path string, userPCM []byte, aiChunks []TimedChunk) error {
 		binary.LittleEndian.PutUint16(mono[i*2:], uint16(int16(m)))
 	}
 
-	return writeMonoWAV(path, recordSampleRate, mono)
+	return buildMonoWAV(recordSampleRate, mono)
 }
 
 // resample converts PCM16 mono from fromRate to toRate using linear interpolation.
@@ -147,24 +156,16 @@ func readSample(pcm []byte, idx int) int16 {
 	return int16(binary.LittleEndian.Uint16(pcm[off:]))
 }
 
-func writeMonoWAV(path string, sampleRate uint32, pcm []byte) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
+func buildMonoWAV(sampleRate uint32, pcm []byte) ([]byte, error) {
+	var buf bytes.Buffer
 	dataSize := uint32(len(pcm))
 	le := binary.LittleEndian
-	write := func(v any) { binary.Write(f, le, v) } //nolint:errcheck
+	write := func(v any) { binary.Write(&buf, le, v) } //nolint:errcheck
 
-	f.WriteString("RIFF")
+	buf.WriteString("RIFF")
 	write(36 + dataSize)
-	f.WriteString("WAVE")
-	f.WriteString("fmt ")
+	buf.WriteString("WAVE")
+	buf.WriteString("fmt ")
 	write(uint32(16))
 	write(uint16(1)) // PCM
 	write(uint16(1)) // mono
@@ -172,8 +173,15 @@ func writeMonoWAV(path string, sampleRate uint32, pcm []byte) error {
 	write(sampleRate * 2) // byteRate
 	write(uint16(2))      // blockAlign
 	write(uint16(16))     // bitsPerSample
-	f.WriteString("data")
+	buf.WriteString("data")
 	write(dataSize)
-	f.Write(pcm)
-	return nil
+	buf.Write(pcm)
+	return buf.Bytes(), nil
+}
+
+func writeWAVFile(path string, wav []byte) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, wav, 0o644)
 }

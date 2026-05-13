@@ -16,16 +16,30 @@ export interface APIConnector {
   active: boolean;
 }
 
+export interface WhatsAppChannel {
+  id: number;
+  phone_number_id: string;
+  access_token: string;
+  app_secret: string;
+  verify_token: string;
+  display_name: string;
+  active: boolean;
+}
+
 export default async function Page() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  let connectors: APIConnector[] = [];
-  try {
-    connectors = await apiFetch<APIConnector[]>("/api/connectors", session.apiKey, { cache: "no-store" });
-  } catch {
-    connectors = [];
-  }
+  const [connectors, whatsappChannel] = await Promise.all([
+    apiFetch<APIConnector[]>("/api/connectors", session.apiKey, { cache: "no-store" }).catch(() => [] as APIConnector[]),
+    apiFetch<WhatsAppChannel | null>("/api/whatsapp-channel", session.apiKey, { cache: "no-store" }).catch(() => null),
+  ]);
 
-  return <ConnectorsPage initialConnectors={connectors} apiKey={session.apiKey} />;
+  return (
+    <ConnectorsPage
+      initialConnectors={connectors}
+      initialWhatsAppChannel={whatsappChannel}
+      apiKey={session.apiKey}
+    />
+  );
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"voiceagent/internal/settings"
 	"voiceagent/internal/tenant"
 	"voiceagent/internal/user"
+	"voiceagent/internal/whatsapp"
 )
 
 func main() {
@@ -66,8 +68,16 @@ func main() {
 	datacollectHandler := datacollect.NewHandler(datacollectSvc)
 
 	// Call log domain
-	callLogSvc := calllog.NewService(calllog.NewRepository(), cfg.RecordingsDir)
+	audioStore, err := calllog.NewR2Store(context.Background(), cfg.R2Endpoint, cfg.R2AccessKeyID, cfg.R2SecretAccessKey, cfg.R2Bucket, cfg.R2Region)
+	if err != nil {
+		log.Fatalf("r2 storage: %v", err)
+	}
+	callLogSvc := calllog.NewService(calllog.NewRepository(), cfg.RecordingsDir, audioStore)
 	callLogHandler := calllog.NewHandler(callLogSvc)
+
+	// WhatsApp channel domain
+	whatsappSvc := whatsapp.NewService(whatsapp.NewRepository())
+	whatsappHandler := whatsapp.NewHandler(whatsappSvc, tenantSvc, mgr, cfg.MetaAppID, cfg.MetaAppSecret)
 
 	// Call domain (now wired with all services)
 	callHandler := call.NewHandler(settingsSvc, knowledgeSvc, connectorSvc, datacollectSvc, callLogSvc, cfg.GeminiAPIKey, cfg.GeminiModel)
@@ -101,6 +111,11 @@ func main() {
 	knowledge.RegisterRoutes(secured.Group("/api"), knowledgeHandler)
 	connector.RegisterRoutes(secured.Group("/api"), connectorHandler)
 	datacollect.RegisterRoutes(secured.Group("/api"), datacollectHandler)
+	whatsapp.RegisterRoutes(secured.Group("/api"), whatsappHandler)
+
+	// Public webhook routes
+	webhooks := r.Group("/webhook")
+	whatsapp.RegisterWebhookRoutes(webhooks, whatsappHandler)
 
 	log.Printf("listening on %s", cfg.HTTPAddr)
 	if err := r.Run(cfg.HTTPAddr); err != nil {

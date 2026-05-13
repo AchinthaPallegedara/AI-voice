@@ -3,6 +3,7 @@ package calllog
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -53,7 +54,27 @@ func (h *Handler) ServeAudio(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "audio not available"})
 		return
 	}
+	if key, ok := parseR2AudioPath(log.AudioPath); ok && h.svc.audioStore != nil {
+		reader, err := h.svc.audioStore.Open(c.Request.Context(), key)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "audio not available"})
+			return
+		}
+		defer reader.Close()
+		c.DataFromReader(http.StatusOK, -1, "audio/wav", reader, map[string]string{
+			"Content-Disposition": `inline; filename="recording.wav"`,
+		})
+		return
+	}
 	c.Header("Content-Type", "audio/wav")
 	c.Header("Content-Disposition", `inline; filename="recording.wav"`)
 	c.File(log.AudioPath)
+}
+
+func parseR2AudioPath(audioPath string) (string, bool) {
+	const prefix = "r2://"
+	if !strings.HasPrefix(audioPath, prefix) {
+		return "", false
+	}
+	return strings.TrimPrefix(audioPath, prefix), true
 }
