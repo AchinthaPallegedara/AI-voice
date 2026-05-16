@@ -2,6 +2,7 @@ package calllog
 
 import (
 	"context"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -11,6 +12,7 @@ type Repository interface {
 	Update(ctx context.Context, db *gorm.DB, log *CallLog) error
 	List(ctx context.Context, db *gorm.DB) ([]*CallLog, error)
 	FindByID(ctx context.Context, db *gorm.DB, id uint) (*CallLog, error)
+	SumDurationSecs(ctx context.Context, db *gorm.DB, from time.Time) (int64, error)
 }
 
 type postgresRepository struct{}
@@ -39,4 +41,13 @@ func (r *postgresRepository) FindByID(ctx context.Context, db *gorm.DB, id uint)
 		return nil, err
 	}
 	return &log, nil
+}
+
+func (r *postgresRepository) SumDurationSecs(ctx context.Context, db *gorm.DB, from time.Time) (int64, error) {
+	var total int64
+	err := db.WithContext(ctx).Model(&CallLog{}).
+		Where("started_at >= ? AND status = ?", from, "completed").
+		Select("COALESCE(SUM(duration_secs), 0)").
+		Scan(&total).Error
+	return total, err
 }

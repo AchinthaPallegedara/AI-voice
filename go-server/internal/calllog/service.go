@@ -103,6 +103,35 @@ func (s *Service) GetCall(ctx context.Context, db *gorm.DB, id uint) (*CallLog, 
 	return s.repo.FindByID(ctx, db, id)
 }
 
+var planLimitMins = map[string]int64{
+	"free":       60,
+	"pro":        600,
+	"enterprise": 3000,
+}
+
+func (s *Service) GetUsage(ctx context.Context, db *gorm.DB, plan string) (*UsageStats, error) {
+	now := time.Now().UTC()
+	periodStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+
+	total, err := s.repo.SumDurationSecs(ctx, db, periodStart)
+	if err != nil {
+		return nil, err
+	}
+
+	limitMins := planLimitMins[plan]
+	if limitMins == 0 {
+		limitMins = planLimitMins["free"]
+	}
+
+	return &UsageStats{
+		UsedSecs:      total,
+		UsedMins:      total / 60,
+		Plan:          plan,
+		PlanLimitMins: limitMins,
+		PeriodStart:   periodStart.Format(time.RFC3339),
+	}, nil
+}
+
 func (s *Service) persistAudio(ctx context.Context, tenantSlug string, callID uint, userPCM []byte, aiChunks []TimedChunk) (string, error) {
 	wav, err := MixWAV(userPCM, aiChunks)
 	if err != nil {

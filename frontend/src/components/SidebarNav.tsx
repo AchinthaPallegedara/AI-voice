@@ -14,6 +14,7 @@ import {
   Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { UsageStats } from "@/app/(dashboard)/layout";
 
 const NAV = [
   { href: "/dashboard",             label: "Dashboard",     icon: LayoutDashboard },
@@ -25,7 +26,7 @@ const NAV = [
   { href: "/dashboard/settings",    label: "Settings",      icon: Settings        },
 ];
 
-export function SidebarNav({ orgName }: { orgName: string }) {
+export function SidebarNav({ orgName, usage }: { orgName: string; usage: UsageStats | null }) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -82,6 +83,9 @@ export function SidebarNav({ orgName }: { orgName: string }) {
         })}
       </nav>
 
+      {/* Usage bar */}
+      {usage && <UsageBar usage={usage} />}
+
       {/* Footer */}
       <div className="px-2 pb-3 pt-2 border-t border-white/8">
         <button
@@ -93,5 +97,41 @@ export function SidebarNav({ orgName }: { orgName: string }) {
         </button>
       </div>
     </aside>
+  );
+}
+
+function UsageBar({ usage }: { usage: UsageStats }) {
+  const pct = usage.plan_limit_mins > 0
+    ? Math.min((usage.used_mins / usage.plan_limit_mins) * 100, 100)
+    : 0;
+
+  const barColor =
+    pct >= 95 ? "bg-red-500" :
+    pct >= 80 ? "bg-yellow-500" :
+    "bg-accent";
+
+  const period = new Date(usage.period_start).toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric",
+  });
+
+  return (
+    <div className="px-3 py-3 border-t border-white/8">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[11px] text-muted">Call Minutes</span>
+        <span className="text-[11px] font-medium text-text">
+          {usage.used_mins} / {usage.plan_limit_mins} min
+        </span>
+      </div>
+      <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
+        <div
+          className={cn("h-full rounded-full transition-all duration-300", barColor)}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="text-[10px] text-muted/60 mt-1.5 capitalize">
+        {usage.plan} plan · {period}
+      </p>
+    </div>
   );
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"voiceagent/internal/tenant"
 )
 
 type Handler struct{ svc *Service }
@@ -69,6 +70,17 @@ func (h *Handler) ServeAudio(c *gin.Context) {
 	c.Header("Content-Type", "audio/wav")
 	c.Header("Content-Disposition", `inline; filename="recording.wav"`)
 	c.File(log.AudioPath)
+}
+
+func (h *Handler) GetUsage(c *gin.Context) {
+	t := c.MustGet("tenant").(*tenant.Tenant)
+	db := c.MustGet("db").(*gorm.DB)
+	stats, err := h.svc.GetUsage(c.Request.Context(), db, t.Plan)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, stats)
 }
 
 func parseR2AudioPath(audioPath string) (string, bool) {

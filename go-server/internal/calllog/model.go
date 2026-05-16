@@ -21,3 +21,11 @@ type CallLog struct {
 	Status          string    `gorm:"default:'completed'" json:"status"`
 	ErrorMessage    string    `gorm:"type:text"         json:"error_message,omitempty"`
 }
+
+type UsageStats struct {
+	UsedSecs      int64  `json:"used_secs"`
+	UsedMins      int64  `json:"used_mins"`
+	Plan          string `json:"plan"`
+	PlanLimitMins int64  `json:"plan_limit_mins"`
+	PeriodStart   string `json:"period_start"`
+}
