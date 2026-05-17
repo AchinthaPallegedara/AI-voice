@@ -29,7 +29,7 @@ func Load() (*Config, error) {
 
 	cfg := &Config{
 		GeminiModel:       os.Getenv("GEMINI_MODEL"),
-		HTTPAddr:          getEnv("HTTP_ADDR", ":8080"),
+		HTTPAddr:          httpAddr(),
 		CORSOrigin:        getEnv("CORS_ORIGIN", "http://localhost:3000"),
 		RecordingsDir:     getEnv("RECORDINGS_DIR", "./recordings"),
 		R2Endpoint:        os.Getenv("R2_ENDPOINT"),
@@ -62,4 +62,12 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// httpAddr returns the address to listen on, honouring Cloud Run's PORT env var.
+func httpAddr() string {
+	if port := os.Getenv("PORT"); port != "" {
+		return ":" + port
+	}
+	return getEnv("HTTP_ADDR", ":8080")
 }

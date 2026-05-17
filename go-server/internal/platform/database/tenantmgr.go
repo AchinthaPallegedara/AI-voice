@@ -13,6 +13,7 @@ import (
 	"voiceagent/internal/settings"
 	"voiceagent/internal/tenant"
 	"voiceagent/internal/telegram"
+	"voiceagent/internal/twilio"
 	"voiceagent/internal/whatsapp"
 
 	"gorm.io/driver/postgres"
@@ -114,6 +115,7 @@ func (m *TenantDBManager) openAndMigrate(dsn string) (*gorm.DB, error) {
 		&datacollect.CollectedRecord{},
 		&whatsapp.Channel{},
 		&telegram.Channel{},
+		&twilio.Channel{},
 	); err != nil && !strings.Contains(err.Error(), "already exists") {
 		return nil, fmt.Errorf("migrate tenant db: %w", err)
 	}

@@ -1,0 +1,45 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    id: build
+    args:
+      - build
+      - -t
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA'
+      - ./go-server
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: push
+    args:
+      - push
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA'
+    waitFor: [build]
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: deploy
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA
+      - --region=${_REGION}
+      - --platform=managed
+      - --allow-unauthenticated
+      - --port=8080
+      - --timeout=3600
+      - --concurrency=1000
+      - --set-env-vars=GEMINI_MODEL=${_GEMINI_MODEL}
+      - --update-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest,CONTROL_PLANE_DATABASE_URL=CONTROL_PLANE_DATABASE_URL:latest,POSTGRES_BASE_DSN=POSTGRES_BASE_DSN:latest,R2_ENDPOINT=R2_ENDPOINT:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest,R2_BUCKET=R2_BUCKET:latest,R2_REGION=R2_REGION:latest,META_APP_ID=META_APP_ID:latest,META_APP_SECRET=META_APP_SECRET:latest,CORS_ORIGIN=CORS_ORIGIN:latest
+    waitFor: [push]
+
+images:
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA'
+
+substitutions:
+  _REGION: asia-southeast1
+  _REPO: voice-agent
+  _SERVICE: claviq-voice
+  _GEMINI_MODEL: ''
+
+options:
+  logging: CLOUD_LOGGING_ONLY

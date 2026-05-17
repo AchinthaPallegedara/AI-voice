@@ -12,6 +12,7 @@ import {
   Settings,
   LogOut,
   Zap,
+  Radio,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { UsageStats } from "@/app/(dashboard)/layout";
@@ -23,6 +24,7 @@ const NAV = [
   { href: "/dashboard/connectors",  label: "Connectors",    icon: Cable           },
   { href: "/dashboard/data",        label: "Collected Data",icon: Database        },
   { href: "/dashboard/recordings",  label: "Recordings",    icon: Mic             },
+  { href: "/dashboard/channels",    label: "Channels",      icon: Radio           },
   { href: "/dashboard/settings",    label: "Settings",      icon: Settings        },
 ];
 

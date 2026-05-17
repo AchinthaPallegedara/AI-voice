@@ -21,6 +21,7 @@ import (
 	"voiceagent/internal/tenant"
 	"voiceagent/internal/user"
 	"voiceagent/internal/telegram"
+	"voiceagent/internal/twilio"
 	"voiceagent/internal/whatsapp"
 )
 
@@ -84,6 +85,14 @@ func main() {
 	telegramSvc := telegram.NewService(telegram.NewRepository())
 	telegramHandler := telegram.NewHandler(telegramSvc, tenantSvc, mgr)
 
+	// Twilio channel domain
+	twilioSvc := twilio.NewService(twilio.NewRepository())
+	twilioHandler := twilio.NewHandler(
+		twilioSvc, tenantSvc, mgr,
+		settingsSvc, knowledgeSvc, connectorSvc, datacollectSvc, callLogSvc,
+		cfg.GeminiAPIKey, cfg.GeminiModel,
+	)
+
 	// Call domain (now wired with all services)
 	callHandler := call.NewHandler(settingsSvc, knowledgeSvc, connectorSvc, datacollectSvc, callLogSvc, cfg.GeminiAPIKey, cfg.GeminiModel)
 
@@ -118,11 +127,13 @@ func main() {
 	datacollect.RegisterRoutes(secured.Group("/api"), datacollectHandler)
 	whatsapp.RegisterRoutes(secured.Group("/api"), whatsappHandler)
 	telegram.RegisterRoutes(secured.Group("/api"), telegramHandler)
+	twilio.RegisterRoutes(secured.Group("/api"), twilioHandler)
 
 	// Public webhook routes
 	webhooks := r.Group("/webhook")
 	whatsapp.RegisterWebhookRoutes(webhooks, whatsappHandler)
 	telegram.RegisterWebhookRoutes(webhooks, telegramHandler)
+	twilio.RegisterWebhookRoutes(webhooks, twilioHandler)
 
 	log.Printf("listening on %s", cfg.HTTPAddr)
 	if err := r.Run(cfg.HTTPAddr); err != nil {
